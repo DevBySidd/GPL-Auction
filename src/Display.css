@@ -224,32 +224,48 @@ button {
   background: linear-gradient(90deg, #fbbf24, #f97316, transparent);
 }
 
-.player-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
+/* PLAYER PHOTO: LARGE PORTRAIT */
 .player-portrait {
+  position: relative;
   display: flex;
-  width: 100px;
-  height: 100px;
-  flex-direction: column;
+  flex-shrink: 0;
+  width: clamp(220px, 25vw, 300px);
+  height: clamp(260px, 30vw, 340px);
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  margin-bottom: 22px;
+  margin: 0 auto 24px;
+  overflow: hidden;
   color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  border: 1px solid rgba(251, 191, 36, 0.35);
   border-radius: 18px;
   background: linear-gradient(145deg, rgba(180, 83, 9, 0.18), rgba(15, 23, 42, 0.8));
 }
 
+.player-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: inherit;
+}
+
 .portrait-caption {
-  color: #94a3b8;
-  font-size: 8px;
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 14px 8px 11px;
+  color: #ffffff;
+  text-align: center;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.14em;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  pointer-events: none;
 }
 
 .player-name {
@@ -764,14 +780,13 @@ button {
   color: #fbbf24;
 }
 
-/* Tablet */
 @media (min-width: 1100px) {
   .public-teams-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* Mobile */
+/* TABLET AND MOBILE */
 @media (max-width: 700px) {
   .display-page {
     padding: 18px 13px 15px;
@@ -828,13 +843,9 @@ button {
   }
 
   .player-portrait {
-    width: 76px;
-    height: 76px;
-    margin-bottom: 16px;
-  }
-
-  .player-portrait > svg {
-    width: 57px;
+    width: min(260px, 100%);
+    height: 300px;
+    margin-bottom: 20px;
   }
 
   .player-name {
@@ -883,5 +894,186 @@ button {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* INTRO VIDEO SCREEN */
+.gpl-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: clamp(18px, 4vw, 52px);
+  background: #05070d;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+}
+
+.gpl-intro-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #05070d;
+}
+
+.gpl-intro-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.65) 0%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.12) 48%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+}
+
+.gpl-intro-top,
+.gpl-intro-bottom {
+  position: relative;
+  z-index: 2;
+}
+
+.gpl-intro-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #f5c66b;
+  font-size: clamp(12px, 1.5vw, 17px);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.gpl-intro-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.gpl-intro-bottom p {
+  margin: 0 0 10px;
+  color: #f5c66b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.gpl-intro-bottom h1 {
+  margin: 0;
+  font-size: clamp(40px, 8vw, 100px);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.gpl-intro-bottom h1 span {
+  color: #f5c66b;
+}
+
+.gpl-intro-tagline {
+  display: inline-block;
+  margin-top: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.gpl-intro-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.gpl-intro-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 17px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(10, 14, 24, 0.75);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.gpl-intro-controls button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.gpl-intro-controls button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.gpl-intro-controls .gpl-skip-button {
+  border-color: #f5c66b;
+  background: #f5c66b;
+  color: #15100a;
+}
+
+.gpl-intro-controls .gpl-skip-button:hover {
+  background: #ffda8b;
+}
+
+.gpl-intro-error {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  margin: auto;
+  text-align: center;
+}
+
+.gpl-intro-error svg {
+  color: #f5c66b;
+}
+
+.gpl-intro-error h1 {
+  font-size: clamp(32px, 5vw, 64px);
+}
+
+.gpl-intro-error p {
+  color: #d0d5df;
+}
+
+@media (max-width: 650px) {
+  .gpl-intro-overlay {
+    padding: 20px;
+  }
+
+  .gpl-intro-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .gpl-intro-controls {
+    justify-content: flex-start;
+  }
+
+  .gpl-intro-controls button {
+    min-height: 42px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .gpl-intro-tagline {
+    font-size: 10px;
+    letter-spacing: 0.14em;
   }
 }
