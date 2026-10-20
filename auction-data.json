@@ -1,0 +1,95 @@
+{
+  "auctionState": {
+    "status": "bidding",
+    "playerId": "1",
+    "playerName": "SURAJ VILAS PATIL",
+    "playerRole": "Batsman",
+    "role": "Batsman",
+    "playerPhoto": "/images/SURAJ VILAS PATIL.jpeg",
+    "photoUrl": "/images/SURAJ VILAS PATIL.jpeg",
+    "image": "/images/SURAJ VILAS PATIL.jpeg",
+    "photo": "/images/SURAJ VILAS PATIL.jpeg",
+    "player": null,
+    "basePrice": 5,
+    "currentBid": 5,
+    "highestTeam": "Rising Champions",
+    "soldTo": "",
+    "remainingPoints": 250
+  },
+  "auctionOverview": {
+    "teams": [
+      {
+        "id": 1,
+        "name": "Rising Champions",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 2,
+        "name": "Bajrang Sport",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 3,
+        "name": "7 Star",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 4,
+        "name": "Mauli Fabrication Super Kings",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 5,
+        "name": "Royal Challengers Garlgunji",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 6,
+        "name": "Shishakti Sport",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 7,
+        "name": "Sahara Eleven",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 8,
+        "name": "Sai Sport",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 9,
+        "name": "Madhyavarti Eleven",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      },
+      {
+        "id": 10,
+        "name": "Jay Shree Ram Sports",
+        "initialPoints": 250,
+        "remainingPoints": 250,
+        "players": []
+      }
+    ],
+    "history": []
+  },
+  "updatedAt": "2026-10-20T18:32:33.829Z"
+}

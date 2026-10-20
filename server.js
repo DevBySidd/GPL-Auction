@@ -9,8 +9,12 @@ import { fileURLToPath } from "node:url";
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
 });
 
 app.use(cors());
@@ -20,6 +24,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, "auction-data.json");
 
 const INITIAL_POINTS = 250;
+const MAX_PLAYER_BID = 50;
+
+const AUCTIONEER = {
+  username: "Gpl",
+  password: "Gpl12",
+};
 
 const TEAM_NAMES = [
   "Rising Champions",
@@ -34,34 +44,38 @@ const TEAM_NAMES = [
   "Jay Shree Ram Sports",
 ];
 
-const makeInitialTeams = () =>
-  TEAM_NAMES.map((name, index) => ({
+function makeInitialTeams() {
+  return TEAM_NAMES.map((name, index) => ({
     id: index + 1,
     name,
     initialPoints: INITIAL_POINTS,
     remainingPoints: INITIAL_POINTS,
     players: [],
   }));
+}
 
-const makeInitialAuctionState = () => ({
-  status: "waiting",
-  playerId: "",
-  playerName: "",
-  playerRole: "",
-  role: "",
-  playerPhoto: "",
-  photoUrl: "",
-  image: "",
-  photo: "",
-  player: null,
-  basePrice: 5,
-  currentBid: 0,
-  highestTeam: "",
-  soldTo: "",
-  remainingPoints: null,
-});
+function makeInitialAuctionState() {
+  return {
+    status: "waiting",
+    playerId: "",
+    playerName: "",
+    playerRole: "",
+    role: "",
+    playerPhoto: "",
+    photoUrl: "",
+    image: "",
+    photo: "",
+    player: null,
+    basePrice: 5,
+    currentBid: 0,
+    highestTeam: "",
+    soldTo: "",
+    remainingPoints: null,
+  };
+}
 
 let auctionState = makeInitialAuctionState();
+
 let auctionOverview = {
   teams: makeInitialTeams(),
   history: [],
@@ -69,7 +83,7 @@ let auctionOverview = {
 
 function saveAuctionData() {
   try {
-    const temporaryFile = `${DATA_FILE}.tmp`;
+    const temporaryFile = DATA_FILE + ".tmp";
 
     fs.writeFileSync(
       temporaryFile,
@@ -98,9 +112,14 @@ function loadAuctionData() {
   }
 
   try {
-    const saved = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    const saved = JSON.parse(
+      fs.readFileSync(DATA_FILE, "utf8")
+    );
 
-    if (saved.auctionState && typeof saved.auctionState === "object") {
+    if (
+      saved.auctionState &&
+      typeof saved.auctionState === "object"
+    ) {
       auctionState = {
         ...makeInitialAuctionState(),
         ...saved.auctionState,
@@ -117,13 +136,21 @@ function loadAuctionData() {
 
     console.log("Saved auction data restored.");
   } catch (error) {
-    console.error("Could not read auction-data.json:", error.message);
-    console.error("Check the file before restarting the server.");
+    console.error(
+      "Could not read auction data:",
+      error.message
+    );
   }
+}
+
+function sendAuctionData(socket) {
+  socket.emit("auction-update", auctionState);
+  socket.emit("auction-overview", auctionOverview);
 }
 
 function broadcastAuction() {
   saveAuctionData();
+
   io.emit("auction-update", auctionState);
   io.emit("auction-overview", auctionOverview);
 }
@@ -133,7 +160,6 @@ function resetCurrentPlayer() {
 }
 
 function undoLastSale() {
-  // History is newest-first in this app.
   const saleIndex = auctionOverview.history.findIndex(
     (item) => item.status === "SOLD"
   );
@@ -154,7 +180,7 @@ function undoLastSale() {
   if (!team) {
     return {
       ok: false,
-      message: `Could not find team "${sale.team}". No changes were made.`,
+      message: "Winning team was not found.",
     };
   }
 
@@ -163,38 +189,35 @@ function undoLastSale() {
   if (!Number.isFinite(amount) || amount < 0) {
     return {
       ok: false,
-      message: "The recorded sale amount is invalid. No changes were made.",
+      message: "Invalid sale amount.",
     };
   }
 
-  const playerIndex = team.players.findIndex((player) =>
-    sale.playerId
-      ? String(player.id) === String(sale.playerId)
-      : player.name === sale.player
+  const playerIndex = team.players.findIndex(
+    (player) =>
+      sale.playerId
+        ? String(player.id) === String(sale.playerId)
+        : player.name === sale.player
   );
 
   if (playerIndex === -1) {
     return {
       ok: false,
-      message:
-        "The player was not found in that team's squad. No changes were made.",
+      message: "Sold player was not found in the team.",
     };
   }
 
-  // Refund points and remove the player from the winning team.
   team.remainingPoints = Math.min(
-    team.initialPoints,
+    Number(team.initialPoints),
     Number(team.remainingPoints) + amount
   );
 
   team.players.splice(playerIndex, 1);
-
-  // Remove only the sale being undone.
   auctionOverview.history.splice(saleIndex, 1);
 
-  // Clear the display if it is still showing this player.
   if (
-    String(auctionState.playerId) === String(sale.playerId) ||
+    String(auctionState.playerId) ===
+      String(sale.playerId) ||
     auctionState.playerName === sale.player
   ) {
     resetCurrentPlayer();
@@ -202,8 +225,80 @@ function undoLastSale() {
 
   return {
     ok: true,
-    message: `Undid the sale of ${sale.player}. ${team.name} received ${amount} points back.`,
+    message:
+      `Sale of ${sale.player} undone. ` +
+      `${team.name} received ${amount} points back.`,
   };
+}
+
+function validAuctionState(state) {
+  if (
+    !state ||
+    typeof state !== "object" ||
+    Array.isArray(state)
+  ) {
+    return false;
+  }
+
+  if (
+    !["waiting", "bidding", "sold", "unsold"].includes(
+      state.status
+    )
+  ) {
+    return false;
+  }
+
+  const bid = Number(state.currentBid);
+  const base = Number(state.basePrice);
+
+  return (
+    Number.isFinite(bid) &&
+    Number.isFinite(base) &&
+    bid >= 0 &&
+    bid <= MAX_PLAYER_BID &&
+    base >= 0 &&
+    base <= MAX_PLAYER_BID
+  );
+}
+
+function validAuctionOverview(overview) {
+  if (
+    !overview ||
+    !Array.isArray(overview.teams) ||
+    !Array.isArray(overview.history)
+  ) {
+    return false;
+  }
+
+  if (
+    overview.teams.length !== TEAM_NAMES.length ||
+    overview.history.length > 1000
+  ) {
+    return false;
+  }
+
+  return overview.teams.every((team) => {
+    if (
+      !team ||
+      !Number.isInteger(team.id) ||
+      !Array.isArray(team.players)
+    ) {
+      return false;
+    }
+
+    const initial = Number(team.initialPoints);
+    const remaining = Number(team.remainingPoints);
+
+    return (
+      team.id >= 1 &&
+      team.id <= TEAM_NAMES.length &&
+      team.name === TEAM_NAMES[team.id - 1] &&
+      initial === INITIAL_POINTS &&
+      Number.isFinite(remaining) &&
+      remaining >= 0 &&
+      remaining <= initial
+    );
+  });
 }
 
 loadAuctionData();
@@ -223,32 +318,45 @@ app.get("/api/overview", (_req, res) => {
 io.on("connection", (socket) => {
   console.log("Device connected:", socket.id);
 
-  socket.emit("auction-update", auctionState);
-  socket.emit("auction-overview", auctionOverview);
+  socket.data.isAdmin = false;
 
+  // Send saved auction data to every new device.
+  sendAuctionData(socket);
+
+  // Authenticate the auctioneer.
+  socket.on("admin-auth", (credentials) => {
+    const valid =
+      credentials?.username === AUCTIONEER.username &&
+      credentials?.password === AUCTIONEER.password;
+
+    socket.data.isAdmin = valid;
+
+    socket.emit("admin-auth-result", {
+      ok: valid,
+      message: valid
+        ? "Auctioneer authenticated."
+        : "Invalid auctioneer credentials.",
+    });
+  });
+
+  socket.on("admin-logout", () => {
+    socket.data.isAdmin = false;
+  });
+
+  // Update live player and bid.
   socket.on("auction-update", (newState) => {
-    if (!newState || typeof newState !== "object" || Array.isArray(newState)) {
+    if (!socket.data.isAdmin) {
       return;
     }
 
-    if (!["waiting", "bidding", "sold", "unsold"].includes(newState.status)) {
+    if (!validAuctionState(newState)) {
       return;
     }
 
-    const currentBid = Number(newState.currentBid);
-    const basePrice = Number(newState.basePrice);
-
-    if (
-      !Number.isFinite(currentBid) ||
-      !Number.isFinite(basePrice) ||
-      currentBid < 0 ||
-      basePrice < 0
-    ) {
-      return;
-    }
-
-    const safeString = (value, maxLength = 500) =>
-      typeof value === "string" ? value.slice(0, maxLength) : "";
+    const safeString = (value, max = 1000) =>
+      typeof value === "string"
+        ? value.slice(0, max)
+        : "";
 
     const player =
       newState.player &&
@@ -257,11 +365,23 @@ io.on("connection", (socket) => {
         ? newState.player
         : null;
 
-    auctionState = {
+    const photo =
+      newState.playerPhoto ||
+      newState.photoUrl ||
+      newState.image ||
+      newState.photo ||
+      player?.photoUrl ||
+      player?.image ||
+      "";
+
+    const nextState = {
       ...makeInitialAuctionState(),
       status: newState.status,
       playerId: safeString(newState.playerId, 100),
-      playerName: safeString(newState.playerName || player?.name, 100),
+      playerName: safeString(
+        newState.playerName || player?.name,
+        100
+      ),
       playerRole: safeString(
         newState.playerRole || newState.role || player?.role,
         100
@@ -270,84 +390,53 @@ io.on("connection", (socket) => {
         newState.role || newState.playerRole || player?.role,
         100
       ),
-      playerPhoto: safeString(
-        newState.playerPhoto ||
-          newState.photoUrl ||
-          newState.image ||
-          newState.photo ||
-          player?.playerPhoto ||
-          player?.photoUrl ||
-          player?.image ||
-          player?.photo,
-        1000
-      ),
-      photoUrl: safeString(
-        newState.photoUrl ||
-          newState.playerPhoto ||
-          newState.image ||
-          newState.photo ||
-          player?.photoUrl ||
-          player?.image ||
-          player?.photo,
-        1000
-      ),
-      image: safeString(
-        newState.image ||
-          newState.playerPhoto ||
-          newState.photoUrl ||
-          player?.image ||
-          player?.photoUrl,
-        1000
-      ),
-      photo: safeString(
-        newState.photo ||
-          newState.playerPhoto ||
-          newState.photoUrl ||
-          player?.photo,
-        1000
-      ),
+      playerPhoto: safeString(photo),
+      photoUrl: safeString(photo),
+      image: safeString(photo),
+      photo: safeString(photo),
       player,
-      basePrice,
-      currentBid,
+      basePrice: Number(newState.basePrice),
+      currentBid: Number(newState.currentBid),
       highestTeam: safeString(newState.highestTeam, 100),
       soldTo: safeString(newState.soldTo, 100),
       remainingPoints:
-        newState.remainingPoints != null &&
-        Number.isFinite(Number(newState.remainingPoints))
-          ? Number(newState.remainingPoints)
-          : null,
+        newState.remainingPoints == null
+          ? null
+          : Number(newState.remainingPoints),
     };
 
-    saveAuctionData();
-    io.emit("auction-update", auctionState);
-  });
-
-  socket.on("auction-overview", (newOverview) => {
     if (
-      !newOverview ||
-      typeof newOverview !== "object" ||
-      !Array.isArray(newOverview.teams) ||
-      !Array.isArray(newOverview.history)
+      JSON.stringify(nextState) ===
+      JSON.stringify(auctionState)
     ) {
       return;
     }
 
-    if (newOverview.teams.length > 20 || newOverview.history.length > 1000) {
+    auctionState = nextState;
+
+    saveAuctionData();
+
+    // Send updates to other devices.
+    // Avoid echoing the same update to the sender.
+    socket.broadcast.emit("auction-update", auctionState);
+  });
+
+  // Update teams, points, and history.
+  socket.on("auction-overview", (newOverview) => {
+    if (!socket.data.isAdmin) {
       return;
     }
 
-    const validTeams = newOverview.teams.every(
-      (team) =>
-        team &&
-        typeof team === "object" &&
-        typeof team.id === "number" &&
-        typeof team.name === "string" &&
-        Number.isFinite(Number(team.initialPoints)) &&
-        Number.isFinite(Number(team.remainingPoints)) &&
-        Array.isArray(team.players)
-    );
+    if (!validAuctionOverview(newOverview)) {
+      return;
+    }
 
-    if (!validTeams) return;
+    if (
+      JSON.stringify(newOverview) ===
+      JSON.stringify(auctionOverview)
+    ) {
+      return;
+    }
 
     auctionOverview = {
       teams: newOverview.teams,
@@ -355,10 +444,24 @@ io.on("connection", (socket) => {
     };
 
     saveAuctionData();
-    io.emit("auction-overview", auctionOverview);
+
+    socket.broadcast.emit(
+      "auction-overview",
+      auctionOverview
+    );
   });
 
+  // Admin recovery controls.
   socket.on("admin-action", (action) => {
+    if (!socket.data.isAdmin) {
+      socket.emit("admin-action-result", {
+        ok: false,
+        message:
+          "Unauthorized. Please log in as auctioneer.",
+      });
+      return;
+    }
+
     if (action === "undo-last-sale") {
       const result = undoLastSale();
 
@@ -366,23 +469,34 @@ io.on("connection", (socket) => {
         broadcastAuction();
       }
 
-      socket.emit("admin-action-result", result);
+      socket.emit("admin-action-result", {
+        ...result,
+        state: auctionState,
+        overview: auctionOverview,
+      });
+
       return;
     }
 
     if (action === "reset-current-player") {
       resetCurrentPlayer();
+
       broadcastAuction();
 
       socket.emit("admin-action-result", {
         ok: true,
-        message: "Current player and bid have been cleared.",
+        message:
+          "Current player and bid have been cleared.",
+        state: auctionState,
+        overview: auctionOverview,
       });
+
       return;
     }
 
     if (action === "reset-entire-auction") {
       auctionState = makeInitialAuctionState();
+
       auctionOverview = {
         teams: makeInitialTeams(),
         history: [],
@@ -392,11 +506,19 @@ io.on("connection", (socket) => {
 
       socket.emit("admin-action-result", {
         ok: true,
-        message: "Auction reset. All teams have 250 points.",
-        overview: auctionOverview,
+        message:
+          "Entire auction reset. All teams have 250 points.",
         state: auctionState,
+        overview: auctionOverview,
       });
+
+      return;
     }
+
+    socket.emit("admin-action-result", {
+      ok: false,
+      message: "Unknown admin action.",
+    });
   });
 
   socket.on("disconnect", () => {
@@ -407,5 +529,7 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`GPL Auction server running on port ${PORT}`);
+  console.log(
+    `GPL Auction server running on port ${PORT}`
+  );
 });
