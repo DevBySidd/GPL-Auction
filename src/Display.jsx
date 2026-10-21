@@ -27,11 +27,6 @@ const DEFAULT_AUCTION = {
   playerName: "",
   role: "",
   playerRole: "",
-  playerPhoto: "",
-  photoUrl: "",
-  image: "",
-  photo: "",
-  player: null,
   basePrice: 0,
   currentBid: 0,
   highestTeam: "",
@@ -72,45 +67,6 @@ function getPlayerPrice(player) {
 
 function getPlayerCountLabel(count) {
   return `${count} ${count === 1 ? "PLAYER" : "PLAYERS"}`;
-}
-
-/* NORMALIZE PLAYER PHOTO PATH */
-function normalizePhotoPath(rawPhoto) {
-  if (typeof rawPhoto !== "string" || !rawPhoto.trim()) {
-    return "";
-  }
-
-  const photo = rawPhoto.trim();
-
-  if (
-    photo.startsWith("https://") ||
-    photo.startsWith("http://") ||
-    photo.startsWith("data:") ||
-    photo.startsWith("blob:")
-  ) {
-    return photo;
-  }
-
-  let path = photo.replace(/\\/g, "/");
-  path = path.replace(/^\.?\/?public\//i, "/");
-
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-
-  const parts = path.split("/");
-
-  return parts
-    .map((part, index) => {
-      if (index === 0) return "";
-
-      try {
-        return encodeURIComponent(decodeURIComponent(part));
-      } catch {
-        return encodeURIComponent(part);
-      }
-    })
-    .join("/");
 }
 
 /* INTRO VIDEO */
@@ -378,18 +334,6 @@ export default function Display() {
 
   const role = auction.role || auction.playerRole || "Player";
 
-  const playerPhoto = normalizePhotoPath(
-    auction.playerPhoto ||
-      auction.photoUrl ||
-      auction.image ||
-      auction.photo ||
-      auction.player?.playerPhoto ||
-      auction.player?.photoUrl ||
-      auction.player?.image ||
-      auction.player?.photo ||
-      ""
-  );
-
   const totalPlayers = teams.reduce(
     (total, team) =>
       total +
@@ -493,24 +437,7 @@ export default function Display() {
               >
                 <section className="player-panel">
                   <div className="player-portrait">
-                    {playerPhoto ? (
-                      <img
-                        key={playerPhoto}
-                        className="player-photo"
-                        src={playerPhoto}
-                        alt={auction.playerName || "GPL Player"}
-                        onError={(event) => {
-                          console.error(
-                            "GPL player photo failed to load:",
-                            event.currentTarget.src
-                          );
-
-                          event.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <UserRound size={76} strokeWidth={1} />
-                    )}
+                    <UserRound size={76} strokeWidth={1} />
 
                     <span className="portrait-caption">
                       GPL PLAYER
